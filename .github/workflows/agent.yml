@@ -1,0 +1,74 @@
+
+name: Agentic Software Engineer
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Task for the AI agent
+        required: true
+        default: Investigate and repair the calculator.
+
+permissions:
+  contents: read
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama
+        run: |
+          if ! curl -fsS localhost:11434/api/tags; then
+            nohup ollama serve > /tmp/ollama.log 2>&1 &
+          fi
+
+          for i in $(seq 1 30); do
+            if curl -fsS localhost:11434/api/tags; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
+
+      - name: Download AI model
+        run: ollama pull qwen2.5-coder:1.5b
+
+      - name: Run autonomous agent
+        env:
+          AGENT_TASK: ${{ inputs.task }}
+        run: python -u -m src.agent
+
+      - name: Display code changes
+        if: always()
+        run: git diff
+
+      - name: Verify final tests
+        run: python -m pytest -v
+
+      - name: Upload proposed changes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-output
+          path: calculator.py
+          retention-days: 7
