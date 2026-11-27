@@ -14,7 +14,7 @@ MAX_STEPS = 15
 
 ROOT = Path(__file__).resolve().parents[1]
 
-SOURCE = ROOT / "calculator.py"
+SOURCE = ROOT / "src" / "calculator.py"
 TESTS = ROOT / "tests" / "test_calculator.py"
 
 
